@@ -71,7 +71,7 @@ function ReactDOMBlockingRoot(
   this._internalRoot = createRootImpl(container, tag, options);
 }
 
-ReactDOMRoot.prototype.render = ReactDOMBlockingRoot.prototype.render = function(
+ReactDOMRoot.prototype.render = ReactDOMBlockingRoot.prototype.render = function (
   children: ReactNodeList,
 ): void {
   const root = this._internalRoot;
@@ -101,7 +101,7 @@ ReactDOMRoot.prototype.render = ReactDOMBlockingRoot.prototype.render = function
   updateContainer(children, root, null, null);
 };
 
-ReactDOMRoot.prototype.unmount = ReactDOMBlockingRoot.prototype.unmount = function(): void {
+ReactDOMRoot.prototype.unmount = ReactDOMBlockingRoot.prototype.unmount = function (): void {
   if (__DEV__) {
     if (typeof arguments[0] === 'function') {
       console.error(
@@ -117,6 +117,7 @@ ReactDOMRoot.prototype.unmount = ReactDOMBlockingRoot.prototype.unmount = functi
   });
 };
 
+// 在初识挂载时，该函数的返回值即为fiberRoot;
 function createRootImpl(
   container: Container,
   tag: RootTag,
