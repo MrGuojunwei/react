@@ -127,7 +127,7 @@ if (__DEV__) {
     webview: true,
   };
 
-  validatePropertiesInDevelopment = function(type, props) {
+  validatePropertiesInDevelopment = function (type, props) {
     validateARIAProperties(type, props);
     validateInputProperties(type, props);
     validateUnknownProperties(type, props, {
@@ -154,7 +154,7 @@ if (__DEV__) {
   const NORMALIZE_NEWLINES_REGEX = /\r\n?/g;
   const NORMALIZE_NULL_AND_REPLACEMENT_REGEX = /\u0000|\uFFFD/g;
 
-  normalizeMarkupForTextOrAttribute = function(markup: mixed): string {
+  normalizeMarkupForTextOrAttribute = function (markup: mixed): string {
     const markupString =
       typeof markup === 'string' ? markup : '' + (markup: any);
     return markupString
@@ -162,7 +162,7 @@ if (__DEV__) {
       .replace(NORMALIZE_NULL_AND_REPLACEMENT_REGEX, '');
   };
 
-  warnForTextDifference = function(
+  warnForTextDifference = function (
     serverText: string,
     clientText: string | number,
   ) {
@@ -182,7 +182,7 @@ if (__DEV__) {
     );
   };
 
-  warnForPropDifference = function(
+  warnForPropDifference = function (
     propName: string,
     serverValue: mixed,
     clientValue: mixed,
@@ -208,19 +208,19 @@ if (__DEV__) {
     );
   };
 
-  warnForExtraAttributes = function(attributeNames: Set<string>) {
+  warnForExtraAttributes = function (attributeNames: Set<string>) {
     if (didWarnInvalidHydration) {
       return;
     }
     didWarnInvalidHydration = true;
     const names = [];
-    attributeNames.forEach(function(name) {
+    attributeNames.forEach(function (name) {
       names.push(name);
     });
     console.error('Extra attributes from the server: %s', names);
   };
 
-  warnForInvalidEventListener = function(registrationName, listener) {
+  warnForInvalidEventListener = function (registrationName, listener) {
     if (listener === false) {
       console.error(
         'Expected `%s` listener to be a function, instead got `false`.\n\n' +
@@ -241,7 +241,7 @@ if (__DEV__) {
 
   // Parse the HTML and read it back to normalize the HTML string so that it
   // can be used for comparison.
-  normalizeHTML = function(parent: Element, html: string) {
+  normalizeHTML = function (parent: Element, html: string) {
     // We could have created a separate document here to avoid
     // re-initializing custom elements if they exist. But this breaks
     // how <noscript> is being handled. So we use the same document.
@@ -259,9 +259,9 @@ if (__DEV__) {
 }
 
 export function ensureListeningTo(
-  rootContainerInstance: Element | Node,
-  reactPropEvent: string,
-  targetElement: Element | null,
+  rootContainerInstance: Element | Node, // 根容器节点
+  reactPropEvent: string, // 事件类型
+  targetElement: Element | null, // 事件的目标节点
 ): void {
   if (!enableEagerRootListeners) {
     // If we have a comment node, then use the parent node,
@@ -270,19 +270,6 @@ export function ensureListeningTo(
       rootContainerInstance.nodeType === COMMENT_NODE
         ? rootContainerInstance.parentNode
         : rootContainerInstance;
-    if (__DEV__) {
-      if (
-        rootContainerElement == null ||
-        (rootContainerElement.nodeType !== ELEMENT_NODE &&
-          // This is to support rendering into a ShadowRoot:
-          rootContainerElement.nodeType !== DOCUMENT_FRAGMENT_NODE)
-      ) {
-        console.error(
-          'ensureListeningTo(): received a container that was not an element node. ' +
-            'This is likely a bug in React. Please file an issue.',
-        );
-      }
-    }
     listenToReactEvent(
       reactPropEvent,
       ((rootContainerElement: any): Element),
@@ -327,13 +314,6 @@ function setInitialDOMProperties(
     }
     const nextProp = nextProps[propKey];
     if (propKey === STYLE) {
-      if (__DEV__) {
-        if (nextProp) {
-          // Freeze the next style object so that we can assume it won't be
-          // mutated. We have already warned for this in the past.
-          Object.freeze(nextProp);
-        }
-      }
       // Relies on `updateStylesByID` not mutating `styleUpdates`.
       setValueForStyles(domElement, nextProp);
     } else if (propKey === DANGEROUSLY_SET_INNER_HTML) {
@@ -364,12 +344,12 @@ function setInitialDOMProperties(
       // We could have excluded it in the property list instead of
       // adding a special case here, but then it wouldn't be emitted
       // on server rendering (but we *do* want to emit it in SSR).
+      // 判断是事件属性的处理
     } else if (registrationNameDependencies.hasOwnProperty(propKey)) {
+      // 判断事件回调是否合规
       if (nextProp != null) {
-        if (__DEV__ && typeof nextProp !== 'function') {
-          warnForInvalidEventListener(propKey, nextProp);
-        }
         if (!enableEagerRootListeners) {
+          // 此处猜测rootContainerElement为document节点
           ensureListeningTo(rootContainerElement, propKey, domElement);
         } else if (propKey === 'onScroll') {
           listenToNonDelegatedEvent('scroll', domElement);
@@ -526,9 +506,6 @@ export function setInitialProperties(
   rootContainerElement: Element | Document,
 ): void {
   const isCustomComponentTag = isCustomComponent(tag, rawProps);
-  if (__DEV__) {
-    validatePropertiesInDevelopment(tag, rawProps);
-  }
 
   // TODO: Make sure that we check isMounted before firing any of these events.
   let props: Object;

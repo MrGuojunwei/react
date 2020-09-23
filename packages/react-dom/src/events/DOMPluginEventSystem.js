@@ -297,7 +297,7 @@ export function listenToNonDelegatedEvent(
   targetElement: Element,
 ): void {
   const isCapturePhaseListener = false;
-  const listenerSet = getEventListenerSet(targetElement);
+  const listenerSet = getEventListenerSet(targetElement); // 给targetElement添加internalEventHandlersKey属性，值为Set对象
   const listenerSetKey = getListenerSetKey(
     domEventName,
     isCapturePhaseListener,
@@ -349,7 +349,7 @@ export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
 }
 
 export function listenToNativeEvent(
-  domEventName: DOMEventName,
+  domEventName: DOMEventName, // dom原生的事件名
   isCapturePhaseListener: boolean,
   rootContainerElement: EventTarget,
   targetElement: Element | null,
@@ -364,16 +364,16 @@ export function listenToNativeEvent(
     domEventName === 'selectionchange' &&
     (rootContainerElement: any).nodeType !== DOCUMENT_NODE
   ) {
-    target = (rootContainerElement: any).ownerDocument;
+    target = (rootContainerElement: any).ownerDocument; // document的事件对象才有ownerDocument属性，即document对象
   }
-  // If the event can be delegated (or is capture phase), we can
+  // If the event can be delegated(委托) (or is capture phase), we can
   // register it to the root container. Otherwise, we should
   // register the event to the target element and mark it as
   // a non-delegated event.
   if (
     targetElement !== null &&
     !isCapturePhaseListener &&
-    nonDelegatedEvents.has(domEventName)
+    nonDelegatedEvents.has(domEventName) // 不能被委托的事件
   ) {
     // For all non-delegated events, apart from scroll, we attach
     // their event listeners to the respective elements that their
@@ -388,15 +388,17 @@ export function listenToNativeEvent(
       return;
     }
     eventSystemFlags |= IS_NON_DELEGATED;
-    target = targetElement;
+    target = targetElement; // target为目标元素本身
   }
-  const listenerSet = getEventListenerSet(target);
-  const listenerSetKey = getListenerSetKey(
+  // eventSystemFlags默认为0
+  const listenerSet = getEventListenerSet(target); // 此时target可能为document或者目标节点
+  const listenerSetKey = getListenerSetKey( // 返回字符串 `${domEventName}__bubble` 作为key
     domEventName,
     isCapturePhaseListener,
   );
   // If the listener entry is empty or we should upgrade, then
   // we need to trap an event listener onto the target.
+  // 我们需要在目标元素上设置一个事件监听器
   if (!listenerSet.has(listenerSetKey)) {
     if (isCapturePhaseListener) {
       eventSystemFlags |= IS_CAPTURE_PHASE;
@@ -417,7 +419,7 @@ export function listenToReactEvent(
   targetElement: Element | null,
 ): void {
   if (!enableEagerRootListeners) {
-    const dependencies = registrationNameDependencies[reactEvent];
+    const dependencies = registrationNameDependencies[reactEvent]; // 该事件依赖的事件，用于合成事件
     const dependenciesLength = dependencies.length;
     // If the dependencies length is 1, that means we're not using a polyfill
     // plugin like ChangeEventPlugin, BeforeInputPlugin, EnterLeavePlugin
@@ -426,8 +428,12 @@ export function listenToReactEvent(
     // always only has a single dependency and SimpleEventPlugin events also
     // use either the native capture event phase or bubble event phase, there
     // is no emulation (except for focus/blur, but that will be removed soon).
+    /**
+     * 如果事件依赖的长度不为1， 则需要使用ChangeEventPlugin, BeforeInputPlugin, EnterLeavePlugin and SelectEventPlugin这些插件进行事件合成，
+     * 否则使用SimpleEventPlugin即可
+     */
     const isPolyfillEventPlugin = dependenciesLength !== 1;
-
+    // 需要合成事件
     if (isPolyfillEventPlugin) {
       const listenerSet = getEventListenerSet(rootContainerElement);
       // When eager listeners are off, this Set has a dual purpose: it both
@@ -446,6 +452,7 @@ export function listenToReactEvent(
         }
       }
     } else {
+      // 不需要合成事件
       const isCapturePhaseListener =
         reactEvent.substr(-7) === 'Capture' &&
         // Edge case: onGotPointerCapture and onLostPointerCapture
@@ -464,7 +471,7 @@ export function listenToReactEvent(
     }
   }
 }
-
+// 给目标元素设置事件侦听器
 function addTrappedEventListener(
   targetContainer: EventTarget,
   domEventName: DOMEventName,

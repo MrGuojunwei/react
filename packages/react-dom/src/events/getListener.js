@@ -49,6 +49,7 @@ function shouldPreventMouseEvent(
  * @param {string} registrationName Name of listener (e.g. `onClick`).
  * @return {?function} The stored callback.
  */
+// 根据Fiber对象获取Fiber对象中的特定事件的回调函数
 export default function getListener(
   inst: Fiber,
   registrationName: string,
@@ -67,11 +68,5 @@ export default function getListener(
   if (shouldPreventMouseEvent(registrationName, inst.type, props)) {
     return null;
   }
-  invariant(
-    !listener || typeof listener === 'function',
-    'Expected `%s` listener to be a function, instead got a value of `%s` type.',
-    registrationName,
-    typeof listener,
-  );
   return listener;
 }

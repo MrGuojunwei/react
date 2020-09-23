@@ -195,7 +195,10 @@ export function updateFiberProps(
 ): void {
   (node: any)[internalPropsKey] = props;
 }
-
+/**
+ * 给node添加internalEventHandlersKey属性，值为Set对象，并返回该Set对象
+ *
+ */
 export function getEventListenerSet(node: EventTarget): Set<string> {
   let elementListenerSet = (node: any)[internalEventHandlersKey];
   if (elementListenerSet === undefined) {

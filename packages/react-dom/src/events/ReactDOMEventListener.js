@@ -96,7 +96,7 @@ export function createEventListenerWrapperWithPriority(
   domEventName: DOMEventName,
   eventSystemFlags: EventSystemFlags,
 ): Function {
-  const eventPriority = getEventPriorityForPluginSystem(domEventName);
+  const eventPriority = getEventPriorityForPluginSystem(domEventName); // 通过插件系统获取事件 0 | 1 | 2
   let listenerWrapper;
   switch (eventPriority) {
     case DiscreteEvent:
