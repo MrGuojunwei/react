@@ -23,7 +23,7 @@ const EventInterface: EventInterfaceType = {
   eventPhase: 0,
   bubbles: 0,
   cancelable: 0,
-  timeStamp: function(event) {
+  timeStamp: function (event) {
     return event.timeStamp || Date.now();
   },
   defaultPrevented: 0,
@@ -57,7 +57,7 @@ export function SyntheticEvent(
   targetInst: Fiber,
   nativeEvent: {[propName: string]: mixed},
   nativeEventTarget: null | EventTarget,
-  Interface: EventInterfaceType = EventInterface,
+  Interface: EventInterfaceType = EventInterface
 ) {
   this._reactName = reactName;
   this._targetInst = targetInst;
@@ -77,7 +77,7 @@ export function SyntheticEvent(
       this[propName] = nativeEvent[propName];
     }
   }
-
+  // defaultPrevented用来判断当前事件是否调用了preventDeafult();
   const defaultPrevented =
     nativeEvent.defaultPrevented != null
       ? nativeEvent.defaultPrevented
@@ -91,8 +91,15 @@ export function SyntheticEvent(
   return this;
 }
 
+/**
+ * 事件原型上添加了preventDefault和stopPropagation事件方法
+ * 本质上是通过nativeEvent拿到原生的事件对象，通过调用原生事
+ * 件对象的preventDefault()和stopPropagation()来实现的，并
+ * 且做了兼容性处理 如果原生事件存在stopPropagation则调用
+ * stopProgagation()，不存在则通过event.cancelBubble = true来阻止冒泡
+ */
 Object.assign(SyntheticEvent.prototype, {
-  preventDefault: function() {
+  preventDefault: function () {
     this.defaultPrevented = true;
     const event = this.nativeEvent;
     if (!event) {
@@ -108,7 +115,7 @@ Object.assign(SyntheticEvent.prototype, {
     this.isDefaultPrevented = functionThatReturnsTrue;
   },
 
-  stopPropagation: function() {
+  stopPropagation: function () {
     const event = this.nativeEvent;
     if (!event) {
       return;
@@ -134,7 +141,7 @@ Object.assign(SyntheticEvent.prototype, {
    * them back into the pool. This allows a way to hold onto a reference that
    * won't be added back into the pool.
    */
-  persist: function() {
+  persist: function () {
     // Modern event system doesn't use pooling.
   },
 
@@ -188,7 +195,7 @@ export const MouseEventInterface: EventInterfaceType = {
   getModifierState: getEventModifierState,
   button: 0,
   buttons: 0,
-  relatedTarget: function(event) {
+  relatedTarget: function (event) {
     if (event.relatedTarget === undefined)
       return event.fromElement === event.srcElement
         ? event.toElement
@@ -196,14 +203,14 @@ export const MouseEventInterface: EventInterfaceType = {
 
     return event.relatedTarget;
   },
-  movementX: function(event) {
+  movementX: function (event) {
     if ('movementX' in event) {
       return event.movementX;
     }
     updateMouseMovementPolyfillState(event);
     return lastMovementX;
   },
-  movementY: function(event) {
+  movementY: function (event) {
     if ('movementY' in event) {
       return event.movementY;
     }
@@ -250,7 +257,7 @@ export const AnimationEventInterface: EventInterfaceType = {
  */
 export const ClipboardEventInterface: EventInterfaceType = {
   ...EventInterface,
-  clipboardData: function(event) {
+  clipboardData: function (event) {
     return 'clipboardData' in event
       ? event.clipboardData
       : window.clipboardData;
@@ -299,42 +306,42 @@ const normalizeKey = {
  * @see https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent#Key_names
  */
 const translateToKey = {
-  '8': 'Backspace',
-  '9': 'Tab',
-  '12': 'Clear',
-  '13': 'Enter',
-  '16': 'Shift',
-  '17': 'Control',
-  '18': 'Alt',
-  '19': 'Pause',
-  '20': 'CapsLock',
-  '27': 'Escape',
-  '32': ' ',
-  '33': 'PageUp',
-  '34': 'PageDown',
-  '35': 'End',
-  '36': 'Home',
-  '37': 'ArrowLeft',
-  '38': 'ArrowUp',
-  '39': 'ArrowRight',
-  '40': 'ArrowDown',
-  '45': 'Insert',
-  '46': 'Delete',
-  '112': 'F1',
-  '113': 'F2',
-  '114': 'F3',
-  '115': 'F4',
-  '116': 'F5',
-  '117': 'F6',
-  '118': 'F7',
-  '119': 'F8',
-  '120': 'F9',
-  '121': 'F10',
-  '122': 'F11',
-  '123': 'F12',
-  '144': 'NumLock',
-  '145': 'ScrollLock',
-  '224': 'Meta',
+  8: 'Backspace',
+  9: 'Tab',
+  12: 'Clear',
+  13: 'Enter',
+  16: 'Shift',
+  17: 'Control',
+  18: 'Alt',
+  19: 'Pause',
+  20: 'CapsLock',
+  27: 'Escape',
+  32: ' ',
+  33: 'PageUp',
+  34: 'PageDown',
+  35: 'End',
+  36: 'Home',
+  37: 'ArrowLeft',
+  38: 'ArrowUp',
+  39: 'ArrowRight',
+  40: 'ArrowDown',
+  45: 'Insert',
+  46: 'Delete',
+  112: 'F1',
+  113: 'F2',
+  114: 'F3',
+  115: 'F4',
+  116: 'F5',
+  117: 'F6',
+  118: 'F7',
+  119: 'F8',
+  120: 'F9',
+  121: 'F10',
+  122: 'F11',
+  123: 'F12',
+  144: 'NumLock',
+  145: 'ScrollLock',
+  224: 'Meta',
 };
 
 /**
@@ -415,7 +422,7 @@ export const KeyboardEventInterface = {
   locale: 0,
   getModifierState: getEventModifierState,
   // Legacy Interface
-  charCode: function(event) {
+  charCode: function (event) {
     // `charCode` is the result of a KeyPress event and represents the value of
     // the actual printable character.
 
@@ -426,7 +433,7 @@ export const KeyboardEventInterface = {
     }
     return 0;
   },
-  keyCode: function(event) {
+  keyCode: function (event) {
     // `keyCode` is the result of a KeyDown/Up event and represents the value of
     // physical keyboard key.
 
@@ -439,7 +446,7 @@ export const KeyboardEventInterface = {
     }
     return 0;
   },
-  which: function(event) {
+  which: function (event) {
     // `which` is an alias for either `keyCode` or `charCode` depending on the
     // type of the event.
     if (event.type === 'keypress') {
