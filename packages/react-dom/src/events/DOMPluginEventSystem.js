@@ -313,11 +313,7 @@ export function listenToNonDelegatedEvent(
   }
 }
 
-const listeningMarker =
-  '_reactListening' +
-  Math.random()
-    .toString(36)
-    .slice(2);
+const listeningMarker = '_reactListening' + Math.random().toString(36).slice(2);
 
 export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
   if (enableEagerRootListeners) {
@@ -329,7 +325,7 @@ export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
       return;
     }
     (rootContainerElement: any)[listeningMarker] = true;
-    allNativeEvents.forEach(domEventName => {
+    allNativeEvents.forEach((domEventName) => {
       if (!nonDelegatedEvents.has(domEventName)) {
         listenToNativeEvent(
           domEventName,
@@ -392,7 +388,8 @@ export function listenToNativeEvent(
   }
   // eventSystemFlags默认为0
   const listenerSet = getEventListenerSet(target); // 此时target可能为document或者目标节点
-  const listenerSetKey = getListenerSetKey( // 返回字符串 `${domEventName}__bubble` 作为key
+  const listenerSetKey = getListenerSetKey(
+    // 返回字符串 `${domEventName}__bubble` 作为key
     domEventName,
     isCapturePhaseListener,
   );
@@ -479,6 +476,7 @@ function addTrappedEventListener(
   isCapturePhaseListener: boolean,
   isDeferredListenerForLegacyFBSupport?: boolean,
 ) {
+  // 此处listener就是dispatchEvent, 默认参数为domEventName,eventSystemFlags,targetContainer
   let listener = createEventListenerWrapperWithPriority(
     targetContainer,
     domEventName,
@@ -488,6 +486,7 @@ function addTrappedEventListener(
   // active and not passive.
   let isPassiveListener = undefined;
   if (passiveBrowserEventsSupported) {
+    // passive事件一般用来提升h5页面滑动的流畅度
     // Browsers introduced an intervention, making these events
     // passive by default on document. React doesn't bind them
     // to document anymore, but changing this now would undo
@@ -521,8 +520,11 @@ function addTrappedEventListener(
   // to support legacy code patterns, it's likely they'll
   // need support for such browsers.
   if (enableLegacyFBSupport && isDeferredListenerForLegacyFBSupport) {
-    const originalListener = listener;
-    listener = function(...p) {
+    const originalListener = listener; // 原来的listener,即dispatchEvent
+    // 改写listener函数
+    listener = function (...p) { // p在此处是原生事件的事件对象
+      // 首先移除当前节点的该事件监听，至于为什么要移除，暂时没有深思
+      // 此处可以知道，listener函数触发后，相应的事件监听就会被移除
       removeEventListener(
         targetContainer,
         domEventName,
@@ -534,6 +536,7 @@ function addTrappedEventListener(
   }
   // TODO: There are too many combinations here. Consolidate them.
   if (isCapturePhaseListener) {
+    // 捕获阶段触发
     if (isPassiveListener !== undefined) {
       unsubscribeListener = addEventCaptureListenerWithPassiveFlag(
         targetContainer,
@@ -557,10 +560,13 @@ function addTrappedEventListener(
         isPassiveListener,
       );
     } else {
+      // 一般情况下走这里的逻辑，冒泡阶段触发，且isPassiveListener为undefined
+      // 绑定事件处理函数，并返回该回调函数，用于在removeEventListener中解绑
+      // addEventBubbleListener = target.addEventListener(eventType, listener, false); return listener;
       unsubscribeListener = addEventBubbleListener(
-        targetContainer,
-        domEventName,
-        listener,
+        targetContainer, // 要绑定事件的节点
+        domEventName, // 事件名
+        listener, // 事件回调
       );
     }
   }
@@ -593,7 +599,7 @@ function isMatchingRootContainer(
       grandContainer.parentNode === targetContainer)
   );
 }
-
+// 进行真正的事件派发处理
 export function dispatchEventForPluginEventSystem(
   domEventName: DOMEventName,
   eventSystemFlags: EventSystemFlags,
@@ -601,7 +607,7 @@ export function dispatchEventForPluginEventSystem(
   targetInst: null | Fiber,
   targetContainer: EventTarget,
 ): void {
-  let ancestorInst = targetInst;
+  let ancestorInst = targetInst; // 目标节点的fiber对象
   if (
     (eventSystemFlags & IS_EVENT_HANDLE_NON_MANAGED_NODE) === 0 &&
     (eventSystemFlags & IS_NON_DELEGATED) === 0
@@ -636,6 +642,9 @@ export function dispatchEventForPluginEventSystem(
       // root boundaries that match that of our current "rootContainer".
       // If we find that "rootContainer", we find the parent fiber
       // sub-tree for that root and make that our ancestor instance.
+      // 如果我们需要改变target的Fiber为祖先Fiber，我们将进行下面的逻辑。遗留的事件系统和现在的事件系统拥有相似的逻辑，
+      // 最大的区别是现在的事件监听添加到了react root和react portal root, 这些dom节点将rootContainer作为它们的事件委托者，
+      // 为了找到我们要用的祖先实例，我们从目标实例向上循环查找Fiber树，为了找到当前rootContainer的根边界，
       let node = targetInst;
 
       mainLoop: while (true) {

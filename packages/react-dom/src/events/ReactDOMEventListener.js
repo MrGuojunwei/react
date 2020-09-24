@@ -66,6 +66,7 @@ const {
 } = Scheduler;
 
 // TODO: can we stop exporting these?
+// 目前不清楚_enabled有什么用
 export let _enabled = true;
 
 // This is exported in FB builds for use by legacy FB layer infra.
@@ -97,19 +98,20 @@ export function createEventListenerWrapperWithPriority(
   eventSystemFlags: EventSystemFlags,
 ): Function {
   const eventPriority = getEventPriorityForPluginSystem(domEventName); // 通过插件系统获取事件 0 | 1 | 2
-  let listenerWrapper;
+  let listenerWrapper; // 用于事件分发的事件处理函数
   switch (eventPriority) {
     case DiscreteEvent:
-      listenerWrapper = dispatchDiscreteEvent;
+      listenerWrapper = dispatchDiscreteEvent; // 调度离散的事件
       break;
     case UserBlockingEvent:
-      listenerWrapper = dispatchUserBlockingUpdate;
+      listenerWrapper = dispatchUserBlockingUpdate; // 调度用户块更新
       break;
     case ContinuousEvent:
     default:
-      listenerWrapper = dispatchEvent;
+      listenerWrapper = dispatchEvent; // 调度事件
       break;
   }
+  // 返回调度事件，并添加默认参数，事件名、事件系统标志位、绑定监听事件的dom节点，document节点或自身
   return listenerWrapper.bind(
     null,
     domEventName,
@@ -178,17 +180,18 @@ function dispatchUserBlockingUpdate(
     );
   }
 }
-
+// document节点上事件触发的回调最终会执行到这里，这里的逻辑就是相关事件的回调执行逻辑
 export function dispatchEvent(
-  domEventName: DOMEventName,
-  eventSystemFlags: EventSystemFlags,
-  targetContainer: EventTarget,
-  nativeEvent: AnyNativeEvent,
+  domEventName: DOMEventName, // 事件名
+  eventSystemFlags: EventSystemFlags, // 事件系统标志位
+  targetContainer: EventTarget, // 事件回调绑定的目标节点
+  nativeEvent: AnyNativeEvent, // 原生的事件对象
 ): void {
   if (!_enabled) {
     return;
   }
   let allowReplay = true;
+  // enableEagerRootListeners 为ture
   if (enableEagerRootListeners) {
     // TODO: replaying capture phase events is currently broken
     // because we used to do it during top-level native bubble handlers
@@ -215,7 +218,7 @@ export function dispatchEvent(
     );
     return;
   }
-
+  // 尝试进行事件派发
   const blockedOn = attemptToDispatchEvent(
     domEventName,
     eventSystemFlags,
@@ -225,6 +228,7 @@ export function dispatchEvent(
 
   if (blockedOn === null) {
     // We successfully dispatched this event.
+    // 成功派发了这个事件
     if (allowReplay) {
       clearIfContinuousEvent(domEventName, nativeEvent);
     }
@@ -255,7 +259,8 @@ export function dispatchEvent(
       return;
     }
     // We need to clear only if we didn't queue because
-    // queueing is accummulative.
+    // queueing is accummulative(累赘的)
+    // 如果我们不需要排队，则需要清除
     clearIfContinuousEvent(domEventName, nativeEvent);
   }
 
@@ -279,17 +284,17 @@ export function attemptToDispatchEvent(
 ): null | Container | SuspenseInstance {
   // TODO: Warn if _enabled is false.
 
-  const nativeEventTarget = getEventTarget(nativeEvent);
-  let targetInst = getClosestInstanceFromNode(nativeEventTarget);
+  const nativeEventTarget = getEventTarget(nativeEvent); // 例如 button#btn
+  let targetInst = getClosestInstanceFromNode(nativeEventTarget);// 返回目标节点对应的Fiber
 
   if (targetInst !== null) {
-    const nearestMounted = getNearestMountedFiber(targetInst);
+    const nearestMounted = getNearestMountedFiber(targetInst); // 获取最近一次挂载的Fiber
     if (nearestMounted === null) {
       // This tree has been unmounted already. Dispatch without a target.
       targetInst = null;
     } else {
-      const tag = nearestMounted.tag;
-      if (tag === SuspenseComponent) {
+      const tag = nearestMounted.tag; // 拿到tag
+      if (tag === SuspenseComponent) { // 如果tag是Suspense节点
         const instance = getSuspenseInstanceFromFiber(nearestMounted);
         if (instance !== null) {
           // Queue the event to be replayed later. Abort dispatching since we
@@ -302,8 +307,8 @@ export function attemptToDispatchEvent(
         // the whole system, dispatch the event without a target.
         // TODO: Warn.
         targetInst = null;
-      } else if (tag === HostRoot) {
-        const root: FiberRoot = nearestMounted.stateNode;
+      } else if (tag === HostRoot) { // 如果tag是原生节点
+        const root: FiberRoot = nearestMounted.stateNode; //
         if (root.hydrate) {
           // If this happens during a replay something went wrong and it might block
           // the whole system.
@@ -323,7 +328,7 @@ export function attemptToDispatchEvent(
     domEventName,
     eventSystemFlags,
     nativeEvent,
-    targetInst,
+    targetInst, // 极有可能为null
     targetContainer,
   );
   // We're not blocked on anything.

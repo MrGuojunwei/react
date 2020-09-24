@@ -6,7 +6,7 @@
  *
  * @flow
  */
-
+// 注册不同类型事件和移除事件的方法
 export function addEventBubbleListener(
   target: EventTarget,
   eventType: string,

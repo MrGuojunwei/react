@@ -353,8 +353,8 @@ function nativeTouchData(x, y) {
  * @param {*} inst Internal component instance
  */
 function executeDispatch(event, listener, inst) {
-  const type = event.type || 'unknown-event';
-  event.currentTarget = getNodeFromInstance(inst);
+  const type = event.type || 'unknown-event'; // 事件类型
+  event.currentTarget = getNodeFromInstance(inst); // 从fiber获取currentTarget，即事件触发节点 inst.stateNode
   invokeGuardedCallbackAndCatchFirstError(type, listener, undefined, event);
   event.currentTarget = null;
 }
@@ -367,10 +367,12 @@ function executeDispatchesInOrder(event) {
   const dispatchInstances = event._dispatchInstances;
   if (Array.isArray(dispatchListeners)) {
     for (let i = 0; i < dispatchListeners.length; i++) {
+      // 如果事件阻止冒泡了，则退出循环
       if (event.isPropagationStopped()) {
         break;
       }
       // Listeners and Instances are two parallel arrays that are always in sync.
+      // 执行事件回调，event为合成事件对象
       executeDispatch(event, dispatchListeners[i], dispatchInstances[i]);
     }
   } else if (dispatchListeners) {
@@ -385,9 +387,11 @@ function executeDispatchesInOrder(event) {
  *
  * @param {?object} event Synthetic event to be dispatched.
  * @private
+ * react 如何向一个组件派发合成事件
  */
 const executeDispatchesAndRelease = function(event: ReactSyntheticEvent) {
   if (event) {
+    // 顺序执行派发
     executeDispatchesInOrder(event);
 
     if (!event.isPersistent()) {
@@ -422,17 +426,20 @@ function getParent(inst) {
 
 /**
  * Simulates the traversal of a two-phase, capture/bubble event dispatch.
+ * 模仿事件流程，捕获阶段和冒泡阶段
  */
 export function traverseTwoPhase(inst, fn, arg) {
-  const path = [];
+  const path = []; // 用来收集从目标节点到根节点路径中经过的节点的fiber对象
   while (inst) {
     path.push(inst);
     inst = getParent(inst);
   }
   let i;
+  // 捕获阶段，从根节点到目标节点
   for (i = path.length; i-- > 0; ) {
     fn(path[i], 'captured', arg);
   }
+  // 冒泡阶段，从目标节点到根节点
   for (i = 0; i < path.length; i++) {
     fn(path[i], 'bubbled', arg);
   }
@@ -461,16 +468,17 @@ function shouldPreventMouseEvent(name, type, props) {
  * @param {object} inst The instance, which is the source of events.
  * @param {string} registrationName Name of listener (e.g. `onClick`).
  * @return {?function} The stored callback.
+ * 从Fiber节点上拿到特定事件的回调函数
  */
 function getListener(inst: Fiber, registrationName: string) {
   // TODO: shouldPreventMouseEvent is DOM-specific and definitely should not
   // live here; needs to be moved to a better place soon
-  const stateNode = inst.stateNode;
+  const stateNode = inst.stateNode; // stateNode 为真实dom节点
   if (!stateNode) {
     // Work in progress (ex: onload events in incremental mode).
     return null;
   }
-  const props = getFiberCurrentPropsFromNode(stateNode);
+  const props = getFiberCurrentPropsFromNode(stateNode);// 从节点上获取FiberCurrentProps属性
   if (!props) {
     // Work in progress.
     return null;
@@ -479,27 +487,21 @@ function getListener(inst: Fiber, registrationName: string) {
   if (shouldPreventMouseEvent(registrationName, inst.type, props)) {
     return null;
   }
-  invariant(
-    !listener || typeof listener === 'function',
-    'Expected `%s` listener to be a function, instead got a value of `%s` type.',
-    registrationName,
-    typeof listener,
-  );
   return listener;
 }
 
 function listenerAtPhase(inst, event, propagationPhase: PropagationPhases) {
-  let registrationName = event._reactName;
+  let registrationName = event._reactName; // react的事件名'onClick'
   if (propagationPhase === 'captured') {
-    registrationName += 'Capture';
+    registrationName += 'Capture'; // onClickCapture
   }
   return getListener(inst, registrationName);
 }
 
 function accumulateDispatches(inst, ignoredDirection, event) {
   if (inst && event && event._reactName) {
-    const registrationName = event._reactName;
-    const listener = getListener(inst, registrationName);
+    const registrationName = event._reactName; // 注册事件名
+    const listener = getListener(inst, registrationName); // 注册的事件回调
     if (listener) {
       if (event._dispatchListeners == null) {
         event._dispatchListeners = [];
@@ -507,18 +509,14 @@ function accumulateDispatches(inst, ignoredDirection, event) {
       if (event._dispatchInstances == null) {
         event._dispatchInstances = [];
       }
-      event._dispatchListeners.push(listener);
+      event._dispatchListeners.push(listener); //
       event._dispatchInstances.push(inst);
     }
   }
 }
-
+// traverseTwoPhase 中的fn函数  fn(inst, 'capture|bubbled', event对象)
 function accumulateDirectionalDispatches(inst, phase, event) {
-  if (__DEV__) {
-    if (!inst) {
-      console.error('Dispatching inst must not be null');
-    }
-  }
+
   const listener = listenerAtPhase(inst, event, phase);
   if (listener) {
     if (event._dispatchListeners == null) {
@@ -527,7 +525,11 @@ function accumulateDirectionalDispatches(inst, phase, event) {
     if (event._dispatchInstances == null) {
       event._dispatchInstances = [];
     }
+    // _dispatchListeners 收集的是从目标节点到根节点整条链路上的事件回调,所有的事件回调实际上收集了两次
+    // 类似于 [4,3,2,1,1,2,3,4]
     event._dispatchListeners.push(listener);
+    // _dispatchInstances 收集的是从目标节点到根节点整条链路上事件回调对应的Fiber节点
+    // 同样的，Fiber对象也是收集了两次
     event._dispatchInstances.push(inst);
   }
 }

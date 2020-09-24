@@ -14,7 +14,7 @@ import {TEXT_NODE} from '../shared/HTMLNodeType';
  * @param {object} nativeEvent Native browser event.
  * @return {DOMEventTarget} Target node.
  */
-// 通过事件对象获取当前事件的元素节点
+// 通过事件对象获取当前事件的目标节点，注意，不是事件回调绑定的节点
 function getEventTarget(nativeEvent) {
   // Fallback to nativeEvent.srcElement for IE9
   // https://github.com/facebook/react/issues/12506
