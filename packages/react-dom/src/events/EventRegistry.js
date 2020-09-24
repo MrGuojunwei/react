@@ -11,6 +11,7 @@ import type {DOMEventName} from './DOMEventNames';
 
 import {enableCreateEventHandleAPI} from 'shared/ReactFeatureFlags';
 
+// allNativeEvents是一个Set对象，保存的是所有原生的事件集合 例如 click change input等
 export const allNativeEvents: Set<DOMEventName> = new Set();
 
 if (enableCreateEventHandleAPI) {
@@ -32,6 +33,7 @@ export const registrationNameDependencies = {};
 export const possibleRegistrationNames = __DEV__ ? {} : (null: any);
 // Trust the developer to only use possibleRegistrationNames in __DEV__
 
+// 注册两个捕获阶段事件和冒泡阶段事件
 export function registerTwoPhaseEvent(
   registrationName: string,
   dependencies: Array<DOMEventName>,
@@ -44,7 +46,8 @@ export function registerDirectEvent(
   registrationName: string,
   dependencies: Array<DOMEventName>,
 ) {
-  registrationNameDependencies[registrationName] = dependencies;
+  registrationNameDependencies[registrationName] = dependencies; // 注册的事件名  及其依赖的原生事件
+  // {'onChange', ['click', 'change', 'input', 'focusin','focusout','input','keydown','keyup','selectionchange',]}
 
   for (let i = 0; i < dependencies.length; i++) {
     allNativeEvents.add(dependencies[i]);

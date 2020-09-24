@@ -119,7 +119,7 @@ ReactDOMRoot.prototype.unmount = ReactDOMBlockingRoot.prototype.unmount = functi
 
 // 在初识挂载时，该函数的返回值即为fiberRoot;
 function createRootImpl(
-  container: Container,
+  container: Container, // Element | Document
   tag: RootTag,
   options: void | RootOptions,
 ) {

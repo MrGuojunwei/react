@@ -205,6 +205,7 @@ export const mediaEventTypes: Array<DOMEventName> = [
 // We should not delegate these events to the container, but rather
 // set them on the actual target element itself. This is primarily
 // because these events do not consistently bubble in the DOM.
+// nonDelegatedEvents是一个Set对象， 用来存储不能被委托的事件名
 export const nonDelegatedEvents: Set<DOMEventName> = new Set([
   'cancel',
   'close',
@@ -315,6 +316,7 @@ export function listenToNonDelegatedEvent(
 
 const listeningMarker = '_reactListening' + Math.random().toString(36).slice(2);
 
+// 监听所有支持的事件
 export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
   if (enableEagerRootListeners) {
     if ((rootContainerElement: any)[listeningMarker]) {
@@ -327,6 +329,8 @@ export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
     (rootContainerElement: any)[listeningMarker] = true;
     allNativeEvents.forEach((domEventName) => {
       if (!nonDelegatedEvents.has(domEventName)) {
+        // 表示domEventName可以被委托处理，通过listenToNativeEvent的第二个参数来区分，true表示不可被委托，false表示可以被委托
+        // 第三个参数表示被委托的dom节点
         listenToNativeEvent(
           domEventName,
           false,
@@ -346,7 +350,7 @@ export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
 
 export function listenToNativeEvent(
   domEventName: DOMEventName, // dom原生的事件名
-  isCapturePhaseListener: boolean,
+  isCapturePhaseListener: boolean, // 是否可以被委托  false表示可以被委托
   rootContainerElement: EventTarget,
   targetElement: Element | null,
   eventSystemFlags?: EventSystemFlags = 0,
@@ -387,7 +391,9 @@ export function listenToNativeEvent(
     target = targetElement; // target为目标元素本身
   }
   // eventSystemFlags默认为0
-  const listenerSet = getEventListenerSet(target); // 此时target可能为document或者目标节点
+  // 此时target可能为document或者目标节点，向target节点上添加`'__reactEvents$' + randomKey;`属性，属性值时Set对象
+  const listenerSet = getEventListenerSet(target);
+  // listenerSetKey为字符串 例如: click__bubble, 猜测是为了和原生的事件名做区分
   const listenerSetKey = getListenerSetKey(
     // 返回字符串 `${domEventName}__bubble` 作为key
     domEventName,
@@ -397,6 +403,7 @@ export function listenToNativeEvent(
   // we need to trap an event listener onto the target.
   // 我们需要在目标元素上设置一个事件监听器
   if (!listenerSet.has(listenerSetKey)) {
+    //
     if (isCapturePhaseListener) {
       eventSystemFlags |= IS_CAPTURE_PHASE;
     }
@@ -522,7 +529,8 @@ function addTrappedEventListener(
   if (enableLegacyFBSupport && isDeferredListenerForLegacyFBSupport) {
     const originalListener = listener; // 原来的listener,即dispatchEvent
     // 改写listener函数
-    listener = function (...p) { // p在此处是原生事件的事件对象
+    listener = function (...p) {
+      // p在此处是原生事件的事件对象
       // 首先移除当前节点的该事件监听，至于为什么要移除，暂时没有深思
       // 此处可以知道，listener函数触发后，相应的事件监听就会被移除
       removeEventListener(
