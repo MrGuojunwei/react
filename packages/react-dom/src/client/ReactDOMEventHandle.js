@@ -45,6 +45,7 @@ function getNearestRootOrPortalContainer(node: Fiber): null | Element {
     const tag = node.tag;
     // Once we encounter a host container or root container
     // we can return their DOM instance.
+    // HostRoot = 3
     if (tag === HostRoot || tag === HostPortal) {
       return node.stateNode.containerInfo;
     }
@@ -81,15 +82,11 @@ function registerEventOnNearestTargetContainer(
 ): void {
   if (!enableEagerRootListeners) {
     // If it is, find the nearest root or portal and make it
+
     // our event handle target container.
+    // 通过targetFiber找到最近的根容器，也就是要委托的dom节点，一般来说时document
     let targetContainer = getNearestRootOrPortalContainer(targetFiber);
     if (targetContainer === null) {
-      if (__DEV__) {
-        console.error(
-          'ReactDOM.createEventHandle: setListener called on an target ' +
-            'that did not have a corresponding root. This is likely a bug in React.',
-        );
-      }
       return;
     }
     if (targetContainer.nodeType === COMMENT_NODE) {
@@ -110,18 +107,15 @@ function registerReactDOMEvent(
   isCapturePhaseListener: boolean,
 ): void {
   // Check if the target is a DOM element.
+  // 校验target是否是一个dom元素
   if ((target: any).nodeType === ELEMENT_NODE) {
     if (!enableEagerRootListeners) {
       const targetElement = ((target: any): Element);
       // Check if the DOM element is managed by React.
+      // 校验该target元素是否被react托管
+      // 通过dom元素获取对应的fiber节点
       const targetFiber = getClosestInstanceFromNode(targetElement);
       if (targetFiber === null) {
-        if (__DEV__) {
-          console.error(
-            'ReactDOM.createEventHandle: setListener called on an element ' +
-              'target that is not managed by React. Ensure React rendered the DOM element.',
-          );
-        }
         return;
       }
       registerEventOnNearestTargetContainer(
@@ -200,11 +194,6 @@ export function createEventHandle(
       target: EventTarget | ReactScopeInstance,
       callback: (SyntheticEvent<EventTarget>) => void,
     ) => {
-      invariant(
-        typeof callback === 'function',
-        'ReactDOM.createEventHandle: setter called with an invalid ' +
-          'callback. The callback must be a function.',
-      );
       if (!doesTargetHaveEventHandle(target, eventHandle)) {
         addEventHandleToTarget(target, eventHandle);
         registerReactDOMEvent(target, domEventName, isCapturePhaseListener);

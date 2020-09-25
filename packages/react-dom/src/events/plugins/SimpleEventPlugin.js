@@ -48,7 +48,7 @@ import getEventCharCode from '../getEventCharCode';
 import {IS_CAPTURE_PHASE} from '../EventSystemFlags';
 
 import {enableCreateEventHandleAPI} from 'shared/ReactFeatureFlags';
-
+// 关键 dispatchQueue将会存储将要被执行的事件回调集合 {event, listeners}
 function extractEvents(
   dispatchQueue: DispatchQueue,
   domEventName: DOMEventName,
@@ -58,6 +58,7 @@ function extractEvents(
   eventSystemFlags: EventSystemFlags,
   targetContainer: EventTarget,
 ): void {
+  // 拿到react事件名
   const reactName = topLevelEventsToReactNames.get(domEventName);
   if (reactName === undefined) {
     return;
@@ -157,6 +158,7 @@ function extractEvents(
       // Unknown event. This is used by createEventHandle.
       break;
   }
+  // 创建事件对象
   const event = new SyntheticEvent(
     reactName,
     reactEventType,
@@ -165,6 +167,7 @@ function extractEvents(
     nativeEventTarget,
     EventInterface,
   );
+  // event.target属性指向触发事件的那个节点
 
   const inCapturePhase = (eventSystemFlags & IS_CAPTURE_PHASE) !== 0;
   if (

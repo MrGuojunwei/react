@@ -100,10 +100,10 @@ export function createEventListenerWrapperWithPriority(
   const eventPriority = getEventPriorityForPluginSystem(domEventName); // 通过插件系统获取事件 0 | 1 | 2
   let listenerWrapper; // 用于事件分发的事件处理函数
   switch (eventPriority) {
-    case DiscreteEvent:
+    case DiscreteEvent: // 离散事件
       listenerWrapper = dispatchDiscreteEvent; // 调度离散的事件
       break;
-    case UserBlockingEvent:
+    case UserBlockingEvent: // 用户块事件类型
       listenerWrapper = dispatchUserBlockingUpdate; // 调度用户块更新
       break;
     case ContinuousEvent:
@@ -181,6 +181,7 @@ function dispatchUserBlockingUpdate(
   }
 }
 // document节点上事件触发的回调最终会执行到这里，这里的逻辑就是相关事件的回调执行逻辑
+// TODO 关键部分  事件触发后进行事件派发的核心逻辑
 export function dispatchEvent(
   domEventName: DOMEventName, // 事件名
   eventSystemFlags: EventSystemFlags, // 事件系统标志位

@@ -271,7 +271,7 @@ export function processDispatchQueue(
   // This would be a good time to rethrow if any of the event handlers threw.
   rethrowCaughtError();
 }
-
+// 进行事件派发
 function dispatchEventsForPlugins(
   domEventName: DOMEventName,
   eventSystemFlags: EventSystemFlags,
@@ -403,10 +403,12 @@ export function listenToNativeEvent(
   // we need to trap an event listener onto the target.
   // 我们需要在目标元素上设置一个事件监听器
   if (!listenerSet.has(listenerSetKey)) {
-    //
+    // 如果委托节点上没有设置该事件类型
     if (isCapturePhaseListener) {
+      // isCapturePhaseListener为true 表示不能被委托
       eventSystemFlags |= IS_CAPTURE_PHASE;
     }
+    // 设置事件监听
     addTrappedEventListener(
       target,
       domEventName,
@@ -483,7 +485,7 @@ function addTrappedEventListener(
   isCapturePhaseListener: boolean,
   isDeferredListenerForLegacyFBSupport?: boolean,
 ) {
-  // 此处listener就是dispatchEvent, 默认参数为domEventName,eventSystemFlags,targetContainer
+  // 此处listener就是dispatchEvent, 默认参数为domEventName,eventSystemFlags,targetContainer，真正执行事件分发的函数
   let listener = createEventListenerWrapperWithPriority(
     targetContainer,
     domEventName,
@@ -528,7 +530,7 @@ function addTrappedEventListener(
   // need support for such browsers.
   if (enableLegacyFBSupport && isDeferredListenerForLegacyFBSupport) {
     const originalListener = listener; // 原来的listener,即dispatchEvent
-    // 改写listener函数
+    // 改写listener函数，此处的listener是真正绑定到target上的事件处理函数
     listener = function (...p) {
       // p在此处是原生事件的事件对象
       // 首先移除当前节点的该事件监听，至于为什么要移除，暂时没有深思
@@ -571,6 +573,7 @@ function addTrappedEventListener(
       // 一般情况下走这里的逻辑，冒泡阶段触发，且isPassiveListener为undefined
       // 绑定事件处理函数，并返回该回调函数，用于在removeEventListener中解绑
       // addEventBubbleListener = target.addEventListener(eventType, listener, false); return listener;
+      // 进行事件绑定
       unsubscribeListener = addEventBubbleListener(
         targetContainer, // 要绑定事件的节点
         domEventName, // 事件名
@@ -1057,6 +1060,7 @@ export function accumulateEventHandleNonManagedNodeListeners(
       const listener = listenersArr[i];
       const {callback, capture: isCapturePhaseListener, type} = listener;
       if (type === targetType) {
+        // 根据事件类型过滤出对应的事件回调数组
         if (inCapturePhase && isCapturePhaseListener) {
           listeners.push(createDispatchListener(null, callback, currentTarget));
         } else if (!inCapturePhase && !isCapturePhaseListener) {
