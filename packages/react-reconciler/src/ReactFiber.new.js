@@ -600,7 +600,7 @@ export function createFiberFromElement(
   }
   return fiber;
 }
-
+// 创建一个Fragment的fiber节点
 export function createFiberFromFragment(
   elements: ReactFragment,
   mode: TypeOfMode,

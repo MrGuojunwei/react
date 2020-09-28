@@ -271,9 +271,11 @@ function resolveLazyType<T, P>(
 // to be able to optimize each path individually by branching early. This needs
 // a compiler or we can do it manually. Helpers that don't need this branching
 // live outside of this function.
-function ChildReconciler(shouldTrackSideEffects) {
+function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数为false 更新时 参数为true
+  // deleteChild的作用就是将第二个参数放到returnFiber.deletions的数组中，returnFiber应该是父节点的Fiber，childToDelete是要被删除的子节点的Fiber
   function deleteChild(returnFiber: Fiber, childToDelete: Fiber): void {
     if (!shouldTrackSideEffects) {
+      // 如果时第一次挂载  不需要做任何处理
       // Noop.
       return;
     }
@@ -285,7 +287,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       deletions.push(childToDelete);
     }
   }
-
+  // deleteRemainingChildren的作用是，从第二个参数节点开始，将后面相邻的节点Fiber全部放入returnFiber.deletions的数组中
   function deleteRemainingChildren(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -304,7 +306,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
     return null;
   }
-
+  // mapRemainingChildren的作用是，从第二个参数节点开始，将后面相邻的节点以key: Fiber| index: Fiber的方式放入一个Map对象中，并返回这个Map对象
   function mapRemainingChildren(
     returnFiber: Fiber,
     currentFirstChild: Fiber,
@@ -325,7 +327,9 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
     return existingChildren;
   }
-
+  // 首先，第一个参数fiber是当前渲染节点的fiber对象，useFiber的作用是如果fiber不为null，复用fiber的数据，将pendingProps替换为第二个参数，
+  // 如果fiber为null,则创建一个fiber，这个fiber就是workInProgress，最终返回这个workInProgress， 并将workInProgress的index置为0，sibling为null，
+  // 最后返回这个workInProgress
   function useFiber(fiber: Fiber, pendingProps: mixed): Fiber {
     // We currently set sibling to null and index to 0 here because it is easy
     // to forget to do before returning it. E.g. for the single child case.
@@ -362,7 +366,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       return lastPlacedIndex;
     }
   }
-
+  // placeSingleChild的作用是当更新时,给newFiber打上Placement的标识,然后返回newFiber
   function placeSingleChild(newFiber: Fiber): Fiber {
     // This is simpler for the single child case. We only need to do a
     // placement for inserting new children.
@@ -372,6 +376,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     return newFiber;
   }
 
+  // 更新文本节点，复用上次渲染的Fiber节点，更新pendingProps为textContent，并设置复用Fiber的return为returnFiber; 返回复用的Fiber节点
   function updateTextNode(
     returnFiber: Fiber,
     current: Fiber | null,
@@ -390,12 +395,12 @@ function ChildReconciler(shouldTrackSideEffects) {
       return existing;
     }
   }
-
+  // 更新元素节点
   function updateElement(
-    returnFiber: Fiber,
-    current: Fiber | null,
-    element: ReactElement,
-    lanes: Lanes,
+    returnFiber: Fiber, // 父节点的fiber
+    current: Fiber | null, // 当前渲染节点的fiber
+    element: ReactElement, // react元素
+    lanes: Lanes, // 优先级相关
   ): Fiber {
     if (current !== null) {
       if (
@@ -403,28 +408,31 @@ function ChildReconciler(shouldTrackSideEffects) {
         // Keep this check inline so it only runs on the false path:
         (__DEV__ ? isCompatibleFamilyForHotReloading(current, element) : false)
       ) {
+        // 当前渲染的节点类型与要更新的节点类型相同
         // Move based on index
-        const existing = useFiber(current, element.props);
-        existing.ref = coerceRef(returnFiber, current, element);
+        const existing = useFiber(current, element.props); // 复用当前渲染节点的fiber对象
+        existing.ref = coerceRef(returnFiber, current, element); // 更改fiber对象的ref和return属性
         existing.return = returnFiber;
         if (__DEV__) {
           existing._debugSource = element._source;
           existing._debugOwner = element._owner;
         }
-        return existing;
+        return existing; // 返回复用的fiber对象
       } else if (enableBlocksAPI && current.tag === Block) {
         // The new Block might not be initialized yet. We need to initialize
         // it in case initializing it turns out it would match.
         let type = element.type;
         if (type.$$typeof === REACT_LAZY_TYPE) {
-          type = resolveLazyType(type);
+          type = resolveLazyType(type); // return type._init(type._payload)
         }
         if (
           type.$$typeof === REACT_BLOCK_TYPE &&
           ((type: any): BlockComponent<any, any>)._render ===
             (current.type: BlockComponent<any, any>)._render
         ) {
+          // 如果type._render === current.type._render一致，执行此逻辑
           // Same as above but also update the .type field.
+          // 复用当前渲染元素的fiber节点, 修改return和type属性
           const existing = useFiber(current, element.props);
           existing.return = returnFiber;
           existing.type = type;
@@ -437,6 +445,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       }
     }
     // Insert
+    //
     const created = createFiberFromElement(element, returnFiber.mode, lanes);
     created.ref = coerceRef(returnFiber, current, element);
     created.return = returnFiber;
@@ -571,21 +580,26 @@ function ChildReconciler(shouldTrackSideEffects) {
   ): Fiber | null {
     // Update the fiber if the keys match, otherwise return null.
 
+    // 拿到旧的子节点的key属性
     const key = oldFiber !== null ? oldFiber.key : null;
 
+    // 如果新节点是文本节点的情况
     if (typeof newChild === 'string' || typeof newChild === 'number') {
       // Text nodes don't have keys. If the previous node is implicitly keyed
       // we can continue to replace it without aborting even if it is not a text
       // node.
       if (key !== null) {
+        // 如果旧节点的key存在，说明旧节点不是文本节点，则不能复用
         return null;
       }
+      // 代码执行到这里，说明旧节点的key不存在，即旧节点也是文本节点，则更新旧节点的文本内容即可
       return updateTextNode(returnFiber, oldFiber, '' + newChild, lanes);
     }
-
+    // 新节点是对象类型的情况
     if (typeof newChild === 'object' && newChild !== null) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE: {
+          // 新节点的key和旧节点的key一样
           if (newChild.key === key) {
             if (newChild.type === REACT_FRAGMENT_TYPE) {
               return updateFragment(
@@ -616,9 +630,10 @@ function ChildReconciler(shouldTrackSideEffects) {
           }
         }
       }
-
+      // 新节点是数组
       if (isArray(newChild) || getIteratorFn(newChild)) {
         if (key !== null) {
+          // 旧节点是对象，则无法复用
           return null;
         }
 
@@ -760,7 +775,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
     return knownKeys;
   }
-
+  // 这个函数算是diff核心中的核心，新的子节点是多个
   function reconcileChildrenArray(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -794,15 +809,19 @@ function ChildReconciler(shouldTrackSideEffects) {
         knownKeys = warnOnInvalidKey(child, knownKeys, returnFiber);
       }
     }
-
+    // 结果的第一个子节点
     let resultingFirstChild: Fiber | null = null;
     let previousNewFiber: Fiber | null = null;
-
+    // 当前渲染的第一个子节点
     let oldFiber = currentFirstChild;
+    // 纠结点指针
     let lastPlacedIndex = 0;
+    // 新节点指针
     let newIdx = 0;
+    // 下一个旧子节点
     let nextOldFiber = null;
     for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
+      // 旧子节点不为null，从0开始遍历新的子节点数组
       if (oldFiber.index > newIdx) {
         nextOldFiber = oldFiber;
         oldFiber = null;
@@ -1100,7 +1119,7 @@ function ChildReconciler(shouldTrackSideEffects) {
 
     return resultingFirstChild;
   }
-
+  // 新节点是个文本节点时
   function reconcileSingleTextNode(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -1109,62 +1128,84 @@ function ChildReconciler(shouldTrackSideEffects) {
   ): Fiber {
     // There's no need to check for keys on text nodes since we don't have a
     // way to define them.
+    // 旧节点的第一个节点也是一个文本节点,则复用旧节点
     if (currentFirstChild !== null && currentFirstChild.tag === HostText) {
       // We already have an existing node so let's just update it and delete
       // the rest.
+      // 从第二个子节点开始,删除后面的节点
       deleteRemainingChildren(returnFiber, currentFirstChild.sibling);
+      // 复用第一个子节点
       const existing = useFiber(currentFirstChild, textContent);
       existing.return = returnFiber;
       return existing;
     }
     // The existing first child is not a text node so we need to create one
     // and delete the existing ones.
+    // 执行到这里说明旧节点的第一个节点不是文本节点,则先删除所有子节点,然后创建一个文本节点,并设置新节点的return属性为returnFiber
     deleteRemainingChildren(returnFiber, currentFirstChild);
     const created = createFiberFromText(textContent, returnFiber.mode, lanes);
     created.return = returnFiber;
     return created;
   }
-
+  // 新的子节点是一个react元素类型,将会执行此函数
+  /**
+   * 总结一下这部分的逻辑：循环 直到child !== null 即首先判断是否存在旧的子节点，
+   * 如果不存在，则判断新的子节点是否是Fragment节点，如果是,则创建Fragemnt类型的Fiber， 如果不是，则创建element类型的fiber
+   * 如果存在，继续后面的判断
+   * 判断新旧子节点的key是否一样，如果不一样，则删除当前处理的子节点，继续下一个相邻子节点
+   * 如果key一样，进行后面的逻辑
+   * 1.如果旧的当前子节点和新的子节点都是Fragment，删除后面的相邻子节点，复用当前子节点
+   * 2.如果旧的当前子节点是Block类型，并且新的子节点是REACT_BLOCK_TYPE类型，删除后面的相邻子节点，复用当前子节点
+   * 3.旧的当前子节点的类型和新的节点类型是同一类型，删除后面的相邻子节点，复用当前子节点
+   *
+   */
   function reconcileSingleElement(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
     element: ReactElement,
     lanes: Lanes,
   ): Fiber {
-    const key = element.key;
-    let child = currentFirstChild;
+    const key = element.key; // 新元素的key属性
+    let child = currentFirstChild; // 旧的第一个子节点
     while (child !== null) {
       // TODO: If key === null and child.key === null, then this only applies to
-      // the first item in the list.
-      if (child.key === key) {
+      // the first item in the list. 列表中的第一项
+      if (child.key === key) { // 如果旧节点的key和新节点的key一致
         switch (child.tag) {
           case Fragment: {
             if (element.type === REACT_FRAGMENT_TYPE) {
+              // 如果新的子节点和旧的子节点都是Fragment标签,删除旧的子节点后面的相邻节点
               deleteRemainingChildren(returnFiber, child.sibling);
+              // 复用旧的子节点
               const existing = useFiber(child, element.props.children);
               existing.return = returnFiber;
               if (__DEV__) {
                 existing._debugSource = element._source;
                 existing._debugOwner = element._owner;
               }
+              // 返回复用后的fiber
               return existing;
             }
             break;
           }
           case Block:
             if (enableBlocksAPI) {
-              let type = element.type;
+              let type = element.type; // 拿到新元素的类型
               if (type.$$typeof === REACT_LAZY_TYPE) {
+                // 判断是否是REACT_LAZY_TYPE类型
                 type = resolveLazyType(type);
               }
-              if (type.$$typeof === REACT_BLOCK_TYPE) {
+              if (type.$$typeof === REACT_BLOCK_TYPE) { // 新元素是REACT_BLOCK_TYPE
                 // The new Block might not be initialized yet. We need to initialize
                 // it in case initializing it turns out it would match.
                 if (
                   ((type: any): BlockComponent<any, any>)._render ===
                   (child.type: BlockComponent<any, any>)._render
                 ) {
+                  // 新元素的type._render === child.tyep._type,则
+                  // 首先删除上下的子节点, 并非真正意义上的删除,只是将要删除的节点添加到returnFiber.deletions中了,在提交阶段进行真正的删除
                   deleteRemainingChildren(returnFiber, child.sibling);
+                  // 复用当前渲染的fiber节点
                   const existing = useFiber(child, element.props);
                   existing.type = type;
                   existing.return = returnFiber;
@@ -1179,6 +1220,7 @@ function ChildReconciler(shouldTrackSideEffects) {
           // We intentionally fallthrough here if enableBlocksAPI is not on.
           // eslint-disable-next-lined no-fallthrough
           default: {
+            // 判断新节点类型和旧节点类型是否一样,如果一样,则复用子节点
             if (
               child.elementType === element.type ||
               // Keep this check inline so it only runs on the false path:
@@ -1186,8 +1228,11 @@ function ChildReconciler(shouldTrackSideEffects) {
                 ? isCompatibleFamilyForHotReloading(child, element)
                 : false)
             ) {
+              // 首先删除剩下的子节点
               deleteRemainingChildren(returnFiber, child.sibling);
+              // 复用已经渲染的fiber节点
               const existing = useFiber(child, element.props);
+              // 更新复用节点的ref属性和return属性
               existing.ref = coerceRef(returnFiber, child, element);
               existing.return = returnFiber;
               if (__DEV__) {
@@ -1200,15 +1245,19 @@ function ChildReconciler(shouldTrackSideEffects) {
           }
         }
         // Didn't match.
+        // 不能复用该child节点,继续处理下一个相邻节点
         deleteRemainingChildren(returnFiber, child);
         break;
       } else {
+        // key不相同,表示不可复用,则删除该子节点,继续处理后面的子节点
         deleteChild(returnFiber, child);
       }
-      child = child.sibling;
+      child = child.sibling; // 处理后面的子节点
     }
-
+    // 代码执行到此，说明旧节点的子节点为null，则意味着添加新的元素
+    // 如果新的元素是Fragment类型
     if (element.type === REACT_FRAGMENT_TYPE) {
+      // 则创建Fragment节点的fiber
       const created = createFiberFromFragment(
         element.props.children,
         returnFiber.mode,
@@ -1218,6 +1267,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       created.return = returnFiber;
       return created;
     } else {
+      // 创建元素节点类型的fiber并返回
       const created = createFiberFromElement(element, returnFiber.mode, lanes);
       created.ref = coerceRef(returnFiber, currentFirstChild, element);
       created.return = returnFiber;
@@ -1264,6 +1314,7 @@ function ChildReconciler(shouldTrackSideEffects) {
   // This API will tag the children with the side-effect of the reconciliation
   // itself. They will be added to the side-effect list as we pass through the
   // children and the parent.
+  // Diff算法的核心逻辑都在这个函数中
   function reconcileChildFibers(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -1278,6 +1329,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     // Handle top level unkeyed fragments as if they were arrays.
     // This leads to an ambiguity between <>{[...]}</> and <>...</>.
     // We treat the ambiguous cases above the same.
+    // 如果newChild是Fragment标签, 则将其children作为一个集合数组，并赋值给newChild
     const isUnkeyedTopLevelFragment =
       typeof newChild === 'object' &&
       newChild !== null &&
@@ -1288,10 +1340,13 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
 
     // Handle object types
+    // 如果newChild是一个对象类型的
     const isObject = typeof newChild === 'object' && newChild !== null;
-
+    // 处理对象类型
+    // 新的子节点是元素类型
     if (isObject) {
       switch (newChild.$$typeof) {
+        // 新的子节点是react元素类型
         case REACT_ELEMENT_TYPE:
           return placeSingleChild(
             reconcileSingleElement(
@@ -1301,6 +1356,7 @@ function ChildReconciler(shouldTrackSideEffects) {
               lanes,
             ),
           );
+          // 新的子节点是react portal类型
         case REACT_PORTAL_TYPE:
           return placeSingleChild(
             reconcileSinglePortal(
@@ -1310,6 +1366,7 @@ function ChildReconciler(shouldTrackSideEffects) {
               lanes,
             ),
           );
+          // 新的子节点是react 懒加载类型
         case REACT_LAZY_TYPE:
           if (enableLazyElements) {
             const payload = newChild._payload;
@@ -1324,7 +1381,7 @@ function ChildReconciler(shouldTrackSideEffects) {
           }
       }
     }
-
+    // 新的子节点是文本或数字类型,判断旧节点的第一个子节点是否时文本节点,如果是则复用,并删除剩下的子节点,如果不是,删除所有子节点,创建文本节点
     if (typeof newChild === 'string' || typeof newChild === 'number') {
       return placeSingleChild(
         reconcileSingleTextNode(
@@ -1335,7 +1392,7 @@ function ChildReconciler(shouldTrackSideEffects) {
         ),
       );
     }
-
+    // 新的子节点不是单个,而是多个,则进行diff比对
     if (isArray(newChild)) {
       return reconcileChildrenArray(
         returnFiber,
@@ -1353,11 +1410,11 @@ function ChildReconciler(shouldTrackSideEffects) {
         lanes,
       );
     }
-
+    // newChild是对象类型,又不是REACT_ELEMENT_TYPE/REACT_PORTAL_TYPE/REACT_LAZY_TYPE这三种类型的,则抛出错误
     if (isObject) {
       throwOnInvalidObjectType(returnFiber, newChild);
     }
-
+    // newChild是函数类型
     if (__DEV__) {
       if (typeof newChild === 'function') {
         warnOnFunctionType(returnFiber);
@@ -1396,6 +1453,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
 
     // Remaining cases are all treated as empty.
+    // 删除剩下的子节点
     return deleteRemainingChildren(returnFiber, currentFirstChild);
   }
 
