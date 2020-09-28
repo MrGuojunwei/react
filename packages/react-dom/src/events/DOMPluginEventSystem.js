@@ -279,6 +279,7 @@ function dispatchEventsForPlugins(
   targetInst: null | Fiber,
   targetContainer: EventTarget,
 ): void {
+  // 通过事件对象获取到 target的dom节点，即触发事件的那个节点
   const nativeEventTarget = getEventTarget(nativeEvent);
   const dispatchQueue: DispatchQueue = [];
   extractEvents(
@@ -364,7 +365,7 @@ export function listenToNativeEvent(
     domEventName === 'selectionchange' &&
     (rootContainerElement: any).nodeType !== DOCUMENT_NODE
   ) {
-    target = (rootContainerElement: any).ownerDocument; // document的事件对象才有ownerDocument属性，即document对象
+    target = (rootContainerElement: any).ownerDocument; // ownerDocument指向document
   }
   // If the event can be delegated(委托) (or is capture phase), we can
   // register it to the root container. Otherwise, we should
@@ -757,19 +758,21 @@ export function accumulateSinglePhaseListeners(
   const captured = bubbled !== null ? bubbled + 'Capture' : null;
   const listeners: Array<DispatchListener> = [];
 
-  let instance = targetFiber;
+  let instance = targetFiber; // target对应的Fiber
   let lastHostComponent = null;
   const targetType = event.nativeEvent.type;
 
   // Accumulate all instances and listeners via the target -> root path.
   while (instance !== null) {
-    const {stateNode, tag} = instance;
+    const {stateNode, tag} = instance; // stateNode为原生节点
     // Handle listeners that are on HostComponents (i.e. <div>)
     if (tag === HostComponent && stateNode !== null) {
+      // 处理原生组件的
       const currentTarget = stateNode;
       lastHostComponent = currentTarget;
       // For Event Handle listeners
       if (enableCreateEventHandleAPI) {
+        // return currentTarget[internalEventHandlerListenersKey] dom节点上存储的所有事件回调
         const eventHandlerlisteners = getEventHandlerListeners(currentTarget);
 
         if (eventHandlerlisteners !== null) {
@@ -812,6 +815,7 @@ export function accumulateSinglePhaseListeners(
         }
       }
     } else if (
+      // 非原生组件
       enableCreateEventHandleAPI &&
       enableScopeAPI &&
       tag === ScopeComponent &&
@@ -852,6 +856,7 @@ export function accumulateSinglePhaseListeners(
     if (accumulateTargetOnly) {
       break;
     }
+    // instance指向的是父节点，从当前节点，一层一层向上递归查找所有该类型的事件
     instance = instance.return;
   }
   if (listeners.length !== 0) {

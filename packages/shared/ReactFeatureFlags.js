@@ -60,6 +60,7 @@ export const enableFundamentalAPI = false;
 export const enableScopeAPI = false;
 
 // Experimental Create Event Handle API.
+// 实验性的创建事件回调api
 export const enableCreateEventHandleAPI = false;
 
 // New API for JSX transforms to target - https://github.com/reactjs/rfcs/pull/107

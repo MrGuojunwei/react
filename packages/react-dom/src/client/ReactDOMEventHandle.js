@@ -203,6 +203,7 @@ export function createEventHandle(
         isCapturePhaseListener,
         callback,
       );
+      // listener: {type, capture, callback}
       let targetListeners = getEventHandlerListeners(target);
       if (targetListeners === null) {
         targetListeners = new Set();
