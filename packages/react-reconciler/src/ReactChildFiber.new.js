@@ -307,6 +307,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
     return null;
   }
   // mapRemainingChildren的作用是，从第二个参数节点开始，将后面相邻的节点以key: Fiber| index: Fiber的方式放入一个Map对象中，并返回这个Map对象
+  // 通过这个map对象可以方便的判断新节点在老节点中是否存在
   function mapRemainingChildren(
     returnFiber: Fiber,
     currentFirstChild: Fiber,
@@ -338,7 +339,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
     clone.sibling = null;
     return clone;
   }
-
+  // 处理节点移动情况的核心
   function placeChild(
     newFiber: Fiber,
     lastPlacedIndex: number,
@@ -571,7 +572,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
 
     return null;
   }
-
+  // 比对新老节点，返回null表示不存在可复用的节点，否则返回可复用的节点
   function updateSlot(
     returnFiber: Fiber,
     oldFiber: Fiber | null,
@@ -651,7 +652,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
 
     return null;
   }
-
+  // 从existingChildren中找到旧节点，如果可复用，返回更新后的节点，如果不可复用，返回null
   function updateFromMap(
     existingChildren: Map<string | number, Fiber>,
     returnFiber: Fiber,
@@ -659,6 +660,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
     newChild: any,
     lanes: Lanes,
   ): Fiber | null {
+    // 如果新节点是文本节点，则通过existingChildren.get方法拿到旧节点，然后updateTextNode拿到新内容的节点
     if (typeof newChild === 'string' || typeof newChild === 'number') {
       // Text nodes don't have keys, so we neither have to check the old nor
       // new node for the key. If both are text nodes, they match.
@@ -668,7 +670,9 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
 
     if (typeof newChild === 'object' && newChild !== null) {
       switch (newChild.$$typeof) {
+        // 新节点是元素节点
         case REACT_ELEMENT_TYPE: {
+          // matchedFiber为匹配到的节点，如果可复用则为可复用的旧节点，如果不可复用，则为null
           const matchedFiber =
             existingChildren.get(
               newChild.key === null ? newIdx : newChild.key,
@@ -682,6 +686,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
               newChild.key,
             );
           }
+          // 返回更新后的元素节点
           return updateElement(returnFiber, matchedFiber, newChild, lanes);
         }
         case REACT_PORTAL_TYPE: {
@@ -814,7 +819,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
     let previousNewFiber: Fiber | null = null;
     // 当前渲染的第一个子节点
     let oldFiber = currentFirstChild;
-    // 纠结点指针
+    //
     let lastPlacedIndex = 0;
     // 新节点指针
     let newIdx = 0;
@@ -865,13 +870,13 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
       previousNewFiber = newFiber;
       oldFiber = nextOldFiber;
     }
-
+    // 新节点已经遍历完毕，则需要将剩下的老节点进行删除
     if (newIdx === newChildren.length) {
       // We've reached the end of the new children. We can delete the rest.
       deleteRemainingChildren(returnFiber, oldFiber);
       return resultingFirstChild;
     }
-
+    // 老节点已经遍历完毕，遍历剩下的新节点进行创建
     if (oldFiber === null) {
       // If we don't have any more existing children we can choose a fast path
       // since the rest will all be insertions.
@@ -905,6 +910,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
         lanes,
       );
       if (newFiber !== null) {
+        // 表示存在可复用的节点
         if (shouldTrackSideEffects) {
           if (newFiber.alternate !== null) {
             // The new fiber is a work in progress, but if there exists a
@@ -929,6 +935,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
     if (shouldTrackSideEffects) {
       // Any existing children that weren't consumed above were deleted. We need
       // to add them to the deletion list.
+      // 删除不可复用的旧节点
       existingChildren.forEach(child => deleteChild(returnFiber, child));
     }
 
