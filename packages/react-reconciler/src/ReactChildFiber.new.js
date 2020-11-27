@@ -371,6 +371,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
   function placeSingleChild(newFiber: Fiber): Fiber {
     // This is simpler for the single child case. We only need to do a
     // placement for inserting new children.
+    // 新创建的节点会添加flags表示
     if (shouldTrackSideEffects && newFiber.alternate === null) {
       newFiber.flags = Placement;
     }
@@ -814,7 +815,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
         knownKeys = warnOnInvalidKey(child, knownKeys, returnFiber);
       }
     }
-    // 结果的第一个子节点
+    // 结果的第一个子节点，即头节点
     let resultingFirstChild: Fiber | null = null;
     let previousNewFiber: Fiber | null = null;
     // 当前渲染的第一个子节点
@@ -1164,6 +1165,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
    * 1.如果旧的当前子节点和新的子节点都是Fragment，删除后面的相邻子节点，复用当前子节点
    * 2.如果旧的当前子节点是Block类型，并且新的子节点是REACT_BLOCK_TYPE类型，删除后面的相邻子节点，复用当前子节点
    * 3.旧的当前子节点的类型和新的节点类型是同一类型，删除后面的相邻子节点，复用当前子节点
+   * 该函数返回可复用的fiber，或者是新创建的fiber
    *
    */
   function reconcileSingleElement(
@@ -1177,9 +1179,11 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
     while (child !== null) {
       // TODO: If key === null and child.key === null, then this only applies to
       // the first item in the list. 列表中的第一项
-      if (child.key === key) { // 如果旧节点的key和新节点的key一致
+      if (child.key === key) { // 如果旧节点的key和新节点的key一致，要么都存在key且一致,要么都不存在key
         switch (child.tag) {
           case Fragment: {
+            // 如果旧节点是Fragment节点，新节点也是Fragment，先删除该旧节点后面的元素。再通过useFiber复用该旧节点，返回复用后的节点
+            // 如果旧节点是Fragment节点，新节点不是Fragment,跳出switch
             if (element.type === REACT_FRAGMENT_TYPE) {
               // 如果新的子节点和旧的子节点都是Fragment标签,删除旧的子节点后面的相邻节点
               deleteRemainingChildren(returnFiber, child.sibling);
@@ -1199,7 +1203,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
             if (enableBlocksAPI) {
               let type = element.type; // 拿到新元素的类型
               if (type.$$typeof === REACT_LAZY_TYPE) {
-                // 判断是否是REACT_LAZY_TYPE类型
+                // 判断是否是REACT_LAZY_TYPE类型，如果新节点是懒加载类型，交由resolveLazyType去处理
                 type = resolveLazyType(type);
               }
               if (type.$$typeof === REACT_BLOCK_TYPE) { // 新元素是REACT_BLOCK_TYPE
@@ -1210,7 +1214,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
                   (child.type: BlockComponent<any, any>)._render
                 ) {
                   // 新元素的type._render === child.tyep._type,则
-                  // 首先删除上下的子节点, 并非真正意义上的删除,只是将要删除的节点添加到returnFiber.deletions中了,在提交阶段进行真正的删除
+                  // 首先删除剩下的子节点, 并非真正意义上的删除,只是将要删除的节点添加到returnFiber.deletions中了,在提交阶段进行真正的删除
                   deleteRemainingChildren(returnFiber, child.sibling);
                   // 复用当前渲染的fiber节点
                   const existing = useFiber(child, element.props);
@@ -1252,7 +1256,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
           }
         }
         // Didn't match.
-        // 不能复用该child节点,继续处理下一个相邻节点
+        // 从当前操作的旧节点开始，删除后面的所有节点
         deleteRemainingChildren(returnFiber, child);
         break;
       } else {
@@ -1350,12 +1354,14 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
     // 如果newChild是一个对象类型的
     const isObject = typeof newChild === 'object' && newChild !== null;
     // 处理对象类型
-    // 新的子节点是元素类型
+    // 新的子节点是对象，表明新的子节点是单个元素，新的子节点是元素类型
     if (isObject) {
+      // newChild.$$typeof存在，表示新节点是一个react元素
       switch (newChild.$$typeof) {
-        // 新的子节点是react元素类型
+        // 新的子节点是react_element类型，普通react元素
         case REACT_ELEMENT_TYPE:
           return placeSingleChild(
+            // 调和单个元素，已知新节点为单个react元素,返回结果要么是被复用的节点，要么是无可复用节点而新创建的节点
             reconcileSingleElement(
               returnFiber,
               currentFirstChild,
@@ -1399,7 +1405,7 @@ function ChildReconciler(shouldTrackSideEffects) { // 第一次挂载时 参数�
         ),
       );
     }
-    // 新的子节点不是单个,而是多个,则进行diff比对
+    // 新的子节点不是单个,而是多个,则进行多个子元素下的diff比对
     if (isArray(newChild)) {
       return reconcileChildrenArray(
         returnFiber,
